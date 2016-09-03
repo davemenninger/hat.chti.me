@@ -1,0 +1,131 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+
+use Mojolicious::Lite;
+use Mojo::JSON qw(decode_json encode_json);
+use Mojolicious::Plugin::Authentication;
+
+my $clients = {};
+
+my $chickens = {};
+
+my $coop = {
+    width       => 640,
+    height      => 480,
+    num_x_cells => 16,
+    num_y_cells => 12,
+};
+
+get '/' => sub {
+    my $controller = shift;
+    $controller->stash( coop => $coop );
+    $controller->render( template => 'index' );
+};
+
+get '/game.js' => sub {
+    my $controller = shift;
+    $controller->stash( coop => $coop );
+    $controller->render( template => 'game', format => 'js' );
+};
+
+websocket '/game' => sub {
+    my $controller = shift;
+
+    app->log->debug( sprintf 'Client connected: %s', $controller->tx );
+    my $id = sprintf "%s", $controller->tx->connection;
+    $clients->{$id} = $controller->tx;
+    app->log->debug( 'id: ' . $id );
+
+    # Opened
+    $controller->app->log->debug('WebSocket opened');
+
+    # Allow inactivity indefinitely
+    $controller->inactivity_timeout(0);
+
+    # Incoming message
+    $controller->on(
+        message => sub {
+            my ( $c, $message ) = @_;
+            app->log->debug("incoming: $message");
+            if ( my $j = decode_json $message ) {
+                app->log->debug( $j->{cmd} );
+                do_msg( c => $c, j => $j );
+            }
+            update_clients();
+        }
+    );
+
+    # Closed
+    $controller->on(
+        finish => sub {
+            my ( $c, $code, $reason ) = @_;
+            $c->app->log->debug("WebSocket closed with status $code");
+            delete $clients->{$id};
+            update_clients();
+        }
+    );
+};
+
+sub do_msg {
+    my (%args) = @_;
+
+    my $c        = $args{c};
+    my $json_msg = $args{j};
+    my $id = $c->tx->connection;
+
+    given ( $json_msg->{cmd}) {
+      when ('AUTHENTICATE') {
+        $c->authenticate( $json_msg->{name}, $json_msg->{code} );
+      }
+      when ('DE_AUTHENTICATE'){
+        $c->logout();
+        $c->session( expires => 1 );
+      }
+      when ('MOVE'){
+        if ( $c->is_user_authenticated ) {
+        }
+        else {
+        }
+      }
+      when ('DESTINATION'){
+        # set entity's destination
+      }
+    }
+
+    return;
+}
+
+sub update_clients {
+    my (%args) = @_;
+
+    for ( keys %$clients ) {
+        $clients->{$_}->send(
+            {
+                json => {
+                    chickens => $chickens,
+                }
+            }
+        );
+    }
+
+    return;
+}
+
+app->start;
+__DATA__
+
+@@ index.html.ep
+% layout 'default';
+% title 'bawk';
+<canvas id='coop' width='<%= $coop->{width} %>' height='<%= $coop->{height} %>'></canvas>
+<h1>bawk, bawk</h1>
+<p id='connection_status'>not connected</p>
+<script src='game.js'></script>
+
+@@ layouts/default.html.ep
+<!DOCTYPE html>
+<html>
+  <head><title><%= title %></title></head>
+  <body><%= content %></body>
+</html>

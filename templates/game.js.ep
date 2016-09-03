@@ -1,0 +1,50 @@
+console.log("hello");
+
+document.onreadystatechange = function() {
+    if (document.readyState == "complete") {
+
+        var canvas = document.getElementById('coop');
+
+        canvas.addEventListener('mousemove', function(evt) {
+            getMousePos(canvas, evt);
+            draw();
+        },
+        false);
+
+        canvas.addEventListener('click', function(event) {
+            selected_cell = {
+                x: Math.floor(mouse_x / cell_width),
+                y: Math.floor(mouse_y / cell_height)
+            };
+            draw();
+        },
+        false);
+
+        resizeCanvas();
+
+        window.addEventListener('resize', resizeCanvas, false);
+    }
+};
+
+var ws = new WebSocket('<%= url_for('game')->to_abs->scheme('wss') %>');
+
+ws.onopen = function(event) {
+    ws.send(JSON.stringify({
+        cmd: 'init'
+    }));
+    document.getElementById('connection_status').innerHTML = 'connected';
+};
+
+// Detect connect close
+ws.onclose = function(event) {
+    document.getElementById('connection_status').innerHTML = 'lost connection <a href="javascript:window.location.href=window.location.href">reload</a>';
+};
+
+// Incoming messages
+ws.onmessage = function(event) {
+    var res = JSON.parse(event.data);
+    chickens = res.chickens;
+    console.log(chickens);
+};
+
+var chickens = [];

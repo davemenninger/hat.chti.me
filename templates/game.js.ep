@@ -45,6 +45,108 @@ ws.onmessage = function(event) {
     var res = JSON.parse(event.data);
     chickens = res.chickens;
     console.log(chickens);
+    document.getElementById('list').innerHTML = '';
+    for (var c in res.chickens) {
+        var chicken = document.getElementById(c);
+        if (!chicken) {
+            chicken = document.createElement("div");
+            chicken.innerHTML = c; // res.chickens[c].name;
+            chicken.id = res.chickens[c].name;
+            var img = document.createElement("img");
+            img.src = 'chicken.png';
+            img.id = 'img-' + c;
+            img.onload = function() {
+                draw();
+            };
+            chicken.appendChild(img);
+            document.getElementById('list').appendChild(chicken);
+        }
+    }
+    draw();
 };
 
 var chickens = [];
+var coop_width = <%= $coop->{width} %>;
+var coop_height = <%= $coop->{height} %>;
+var num_x_cells = <%= $coop->{num_x_cells} %>;
+var num_y_cells = <%= $coop->{num_y_cells} %>;
+var cell_width = coop_width / num_x_cells;
+var cell_height = coop_height / num_y_cells;
+var mouse_x = 0;
+var mouse_y = 0;
+var selected_cell = {};
+
+
+function draw() {
+    var canvas = document.getElementById('coop');
+    if (canvas.getContext) {
+        var context = canvas.getContext("2d");
+
+        // background
+        context.fillStyle = "#FFFFFF";
+        context.fillRect(0, 0, canvas.width, canvas.height);
+
+        for (var c in chickens) {
+            var img = document.getElementById('img-' + c);
+            context.drawImage(img, chickens[c].x*cell_width, chickens[c].y*cell_height,cell_width,cell_height);
+        }
+
+        //current mouse cell
+        context.strokeStyle = 'goldenrod';
+        context.lineWidth = '3';
+        context.strokeRect(mouse_x - (mouse_x % cell_width), mouse_y - (mouse_y % cell_height), cell_width, cell_height);
+
+        //selected cell
+        context.strokeStyle = 'firebrick';
+        context.lineWidth = '6';
+        context.strokeRect(selected_cell.x * cell_width, selected_cell.y * cell_height, cell_width, cell_height);
+
+    }
+}
+
+function getMousePos(canvas, evt) {
+    var rect = canvas.getBoundingClientRect();
+        mouse_x = (evt.clientX - rect.left) / (rect.right - rect.left) * canvas.width;
+            mouse_y = (evt.clientY - rect.top) / (rect.bottom - rect.top) * canvas.height;
+            }
+
+function resizeCanvas() {
+    var canvas = document.getElementById('coop');
+
+    if ( canvas.height > window.innerHeight * 0.8) {
+        // window too short
+        canvas.height = window.innerHeight * 0.8;
+        canvas.width = (canvas.height / coop_height) * coop_width;
+    } else if (canvas.width > window.innerWidth * 0.8) {
+        // window too thin
+        canvas.width = window.innerWidth * 0.8;
+        canvas.height = (canvas.width / coop_width) * coop_height;
+    } else {
+        canvas.height = coop_height;
+        canvas.width = coop_width;
+    }
+    /* else {
+        // window plenty large
+        if ( (canvas.width/coop_width) * coop_height > window.innerHeight * 0.8 )
+        {
+            // height would end up too big
+            canvas.height = window.innerHeight * 0.8;
+            canvas.width = (canvas.height / coop_height) * coop_width;
+        } else if ( (canvas.height / coop_height) * coop_width > window.innerWidth * 0.8 )
+        {
+            // width would end up too wide
+            canvas.width = window.innerWidth * 0.8;
+            canvas.height = (canvas.width / coop_width) * coop_height;
+        } else
+        {
+            canvas.height = coop_height;
+            canvas.width = coop_width;
+        }
+    }
+    */
+    cell_width = canvas.width / num_x_cells;
+    cell_height = canvas.height / num_y_cells;
+
+    draw();
+}
+

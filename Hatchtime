@@ -8,7 +8,13 @@ use Mojolicious::Plugin::Authentication;
 
 my $clients = {};
 
-my $chickens = {};
+my $chickens = {
+    alice => {
+        x   => 4,
+        y   => 3,
+        age => 1,
+    },
+};
 
 my $coop = {
     width       => 640,
@@ -16,6 +22,12 @@ my $coop = {
     num_x_cells => 16,
     num_y_cells => 12,
 };
+
+my $seconds_per_tick = 3;
+
+Mojo::IOLoop->recurring( $seconds_per_tick => sub {
+    npc_turn();
+});
 
 get '/' => sub {
     my $controller = shift;
@@ -112,6 +124,77 @@ sub update_clients {
     return;
 }
 
+sub npc_turn {
+    app->log->debug('TICK');
+
+    for my $chicken ( keys %$chickens ) {
+        app->log->debug( "\t"
+              . $chicken . ":\t"
+              . "location: \t"
+              . $chickens->{$chicken}->{x} . "\t"
+              . $chickens->{$chicken}->{y} . "\t"
+              . "age: \t"
+              . $chickens->{$chicken}->{age} );
+        move_chicken( chicken => $chicken );
+        age_chicken( chicken => $chicken );
+        if ( $chickens->{$chicken} ) {
+            app->log->debug( "\t"
+                  . $chickens->{$chicken}->{x} . "\t"
+                  . $chickens->{$chicken}->{y} . "\t"
+                  . "age: \t"
+                  . $chickens->{$chicken}->{age} );
+        }
+    }
+
+    update_clients( clients => $clients );
+    return;
+}
+
+sub move_chicken {
+    my (%args) = @_;
+
+    my @moves = ( 'up', 'down', 'left', 'right' );
+    my $move_direction   = $moves[rand @moves];
+    move_entity(
+      entity => \$chickens->{ $args{chicken} },
+      direction => $move_direction,
+      distance => 1,
+    );
+    return;
+}
+
+sub move_entity {
+  my (%args) = @_;
+
+  ${$args{entity}}->{y} -= ( $args{direction} eq 'up') ? $args{distance} : 0;
+  ${$args{entity}}->{y} += ( $args{direction} eq 'down') ? $args{distance} : 0;
+  ${$args{entity}}->{x} -= ( $args{direction} eq 'left') ? $args{distance} : 0;
+  ${$args{entity}}->{x} += ( $args{direction} eq 'right') ? $args{distance} : 0;
+
+  ${$args{entity}}->{y} %= $coop->{num_y_cells};
+  ${$args{entity}}->{x} %= $coop->{num_x_cells};
+
+  # calculate new position
+  # if new position legal, set pos = new postion
+  # else, pos = old pos
+  #
+  # position is legal if: no other entity is in that position ( besides self )
+  # for each entity in the world, is it in new_postion
+
+  return;
+}
+
+sub age_chicken {
+    my (%args) = @_;
+    $chickens->{ $args{chicken} }->{age} += 1;
+    if ( $chickens->{ $args{chicken} }->{age} > 111 )
+    {
+        app->log->debug( "\t" . $args{chicken} . ' died of old age!' );
+        delete($chickens->{ $args{chicken} });
+    }
+    return;
+}
+
 app->start;
 __DATA__
 
@@ -121,6 +204,7 @@ __DATA__
 <canvas id='coop' width='<%= $coop->{width} %>' height='<%= $coop->{height} %>'></canvas>
 <h1>bawk, bawk</h1>
 <p id='connection_status'>not connected</p>
+<p id='list'></p>
 <script src='game.js'></script>
 
 @@ layouts/default.html.ep

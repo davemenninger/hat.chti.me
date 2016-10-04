@@ -133,14 +133,10 @@ sub npc_turn {
     app->log->debug('TICK');
 
     for my $chicken ( keys %$chickens ) {
-        # chicken_dumper
         log_chicken( chicken => $chicken );
         move_chicken( chicken => $chicken );
         lay_egg( chicken => $chicken );
         age_chicken( chicken => $chicken );
-        if ( $chickens->{$chicken} ) {
-          log_chicken( chicken => $chicken );
-        }
     }
 
     for my $egg ( keys %$eggs )
@@ -154,25 +150,25 @@ sub npc_turn {
 }
 
 sub log_chicken {
-    my (%args) = @_;
-    app->log->debug( "\t"
-          . $args{chicken} . ":\t" . 'x:'
-          . $chickens->{ $args{chicken} }->{x} . "\t" . 'y:'
-          . $chickens->{ $args{chicken} }->{y} . "\t"
-          . "age: \t"
-          . $chickens->{ $args{chicken} }->{age} );
-    return;
+  my (%args) = @_;
+  app->log->debug( "\t"
+    . 'x:'. $chickens->{ $args{chicken} }->{x} . "\t"
+    . 'y:'. $chickens->{ $args{chicken} }->{y} . "\t"
+    . "age: \t". $chickens->{ $args{chicken} }->{age} . "\t"
+    . $args{chicken} . "\t"
+  );
+  return;
 }
 
 sub log_egg {
-    my (%args) = @_;
-    app->log->debug( "\t"
-          . $args{egg} . ":\t" . 'x:'
-          . $eggs->{ $args{egg} }->{x} . "\t" . 'y:'
-          . $eggs->{ $args{egg} }->{y} . "\t"
-          . "age: \t"
-          . $eggs->{ $args{egg} }->{age} );
-    return;
+  my (%args) = @_;
+  app->log->debug( "\t"
+    . 'x:'. $eggs->{ $args{egg} }->{x} . "\t"
+    . 'y:'. $eggs->{ $args{egg} }->{y} . "\t"
+    . "age: \t" . $eggs->{ $args{egg} }->{age} . "\t"
+    . $args{egg} . "\t"
+  );
+  return;
 }
 
 sub move_chicken {
@@ -212,10 +208,9 @@ sub move_entity {
 sub age_chicken {
     my (%args) = @_;
     $chickens->{ $args{chicken} }->{age} += 1;
-    if ( $chickens->{ $args{chicken} }->{age} > 111 )
-    {
+    if ( $chickens->{ $args{chicken} }->{age} > 111 ) {
         app->log->debug( "\t" . $args{chicken} . ' died of old age!' );
-        delete($chickens->{ $args{chicken} });
+        delete( $chickens->{ $args{chicken} } );
     }
     return;
 }
@@ -223,7 +218,11 @@ sub age_chicken {
 sub lay_egg {
     my (%args) = @_;
 
-    if ( $chickens->{ $args{chicken} }->{age} % 15 == 0 ) {
+    if (
+      $chickens->{ $args{chicken} }->{age} % 15 == 0
+      && (scalar keys %$chickens)<15
+      && (int rand(3)) == 2
+    ) {
         my $name = $args{chicken} . '_' . $meta->name();
         $eggs->{$name}->{x}   = $chickens->{ $args{chicken} }->{x};
         $eggs->{$name}->{y}   = $chickens->{ $args{chicken} }->{y};

@@ -5,9 +5,11 @@ use warnings;
 use Mojolicious::Lite;
 use Mojo::JSON qw(decode_json encode_json);
 use Mojolicious::Plugin::Authentication;
+use Acme::MetaSyntactic qw( norse_mythology );
 
 my $clients = {};
 
+my $meta = Acme::MetaSyntactic->new( category => ':all' );
 my $chickens = {
     alice => {
         x   => 4,
@@ -15,6 +17,8 @@ my $chickens = {
         age => 1,
     },
 };
+
+my $eggs = {};
 
 my $coop = {
     width       => 640,
@@ -116,6 +120,7 @@ sub update_clients {
             {
                 json => {
                     chickens => $chickens,
+                    eggs => $eggs,
                 }
             }
         );
@@ -128,25 +133,45 @@ sub npc_turn {
     app->log->debug('TICK');
 
     for my $chicken ( keys %$chickens ) {
-        app->log->debug( "\t"
-              . $chicken . ":\t"
-              . "location: \t"
-              . $chickens->{$chicken}->{x} . "\t"
-              . $chickens->{$chicken}->{y} . "\t"
-              . "age: \t"
-              . $chickens->{$chicken}->{age} );
+        # chicken_dumper
+        log_chicken( chicken => $chicken );
         move_chicken( chicken => $chicken );
+        lay_egg( chicken => $chicken );
         age_chicken( chicken => $chicken );
         if ( $chickens->{$chicken} ) {
-            app->log->debug( "\t"
-                  . $chickens->{$chicken}->{x} . "\t"
-                  . $chickens->{$chicken}->{y} . "\t"
-                  . "age: \t"
-                  . $chickens->{$chicken}->{age} );
+          log_chicken( chicken => $chicken );
         }
     }
 
+    for my $egg ( keys %$eggs )
+    {
+      log_egg( egg => $egg );
+      age_egg( egg => $egg );
+    }
+
     update_clients( clients => $clients );
+    return;
+}
+
+sub log_chicken {
+    my (%args) = @_;
+    app->log->debug( "\t"
+          . $args{chicken} . ":\t" . 'x:'
+          . $chickens->{ $args{chicken} }->{x} . "\t" . 'y:'
+          . $chickens->{ $args{chicken} }->{y} . "\t"
+          . "age: \t"
+          . $chickens->{ $args{chicken} }->{age} );
+    return;
+}
+
+sub log_egg {
+    my (%args) = @_;
+    app->log->debug( "\t"
+          . $args{egg} . ":\t" . 'x:'
+          . $eggs->{ $args{egg} }->{x} . "\t" . 'y:'
+          . $eggs->{ $args{egg} }->{y} . "\t"
+          . "age: \t"
+          . $eggs->{ $args{egg} }->{age} );
     return;
 }
 
@@ -191,6 +216,30 @@ sub age_chicken {
     {
         app->log->debug( "\t" . $args{chicken} . ' died of old age!' );
         delete($chickens->{ $args{chicken} });
+    }
+    return;
+}
+
+sub lay_egg {
+    my (%args) = @_;
+
+    if ( $chickens->{ $args{chicken} }->{age} % 15 == 0 ) {
+        my $name = $args{chicken} . '_' . $meta->name();
+        $eggs->{$name}->{x}   = $chickens->{ $args{chicken} }->{x};
+        $eggs->{$name}->{y}   = $chickens->{ $args{chicken} }->{y};
+        $eggs->{$name}->{age} = 0;
+    }
+    return;
+}
+
+sub age_egg {
+    my (%args) = @_;
+    $eggs->{ $args{egg} }->{age} += 1;
+    if ( $eggs->{ $args{egg} }->{age} > 5 )
+    {
+        app->log->debug( "\t" . $args{egg} . ' hatched!' );
+        my $chicken = delete($eggs->{ $args{egg} });
+        $chickens->{ $args{egg} } = $chicken;
     }
     return;
 }

@@ -44,13 +44,14 @@ ws.onclose = function(event) {
 ws.onmessage = function(event) {
     var res = JSON.parse(event.data);
     chickens = res.chickens;
+    eggs = res.eggs;
     console.log(chickens);
     document.getElementById('list').innerHTML = '';
     for (var c in res.chickens) {
         var chicken = document.getElementById(c);
         if (!chicken) {
             chicken = document.createElement("div");
-            chicken.innerHTML = c; // res.chickens[c].name;
+            chicken.innerHTML = c + ' ' + res.chickens[c].age;
             chicken.id = res.chickens[c].name;
             var img = document.createElement("img");
             img.src = 'chicken.png';
@@ -62,10 +63,27 @@ ws.onmessage = function(event) {
             document.getElementById('list').appendChild(chicken);
         }
     }
+    for (var e in res.eggs) {
+        var egg = document.getElementById(e);
+        if (!egg) {
+            egg = document.createElement("div");
+            egg.innerHTML = e + ' ' + res.eggs[e].age;
+            egg.id = res.eggs[e].name;
+            var img = document.createElement("img");
+            img.src = 'egg.png';
+            img.id = 'img-' + e;
+            img.onload = function() {
+                draw();
+            };
+            egg.appendChild(img);
+            document.getElementById('list').appendChild(egg);
+        }
+    }
     draw();
 };
 
 var chickens = [];
+var eggs = [];
 var coop_width = <%= $coop->{width} %>;
 var coop_height = <%= $coop->{height} %>;
 var num_x_cells = <%= $coop->{num_x_cells} %>;
@@ -86,6 +104,10 @@ function draw() {
         context.fillStyle = "#FFFFFF";
         context.fillRect(0, 0, canvas.width, canvas.height);
 
+        for (var e in eggs) {
+            var img = document.getElementById('img-' + e);
+            context.drawImage(img, eggs[e].x*cell_width, eggs[e].y*cell_height,cell_width,cell_height);
+        }
         for (var c in chickens) {
             var img = document.getElementById('img-' + c);
             context.drawImage(img, chickens[c].x*cell_width, chickens[c].y*cell_height,cell_width,cell_height);

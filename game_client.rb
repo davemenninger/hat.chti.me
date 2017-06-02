@@ -2,14 +2,23 @@ require 'gosu'
 require 'thread'
 require 'faye/websocket'
 require 'eventmachine'
+require 'json'
 
 class Tutorial < Gosu::Window
   def initialize
-    super 640, 480
+    @coop_width = 640
+    @coop_height = 480
+    @num_x_cells = 16
+    @num_y_cells = 12
+    super @coop_width, @coop_height
     self.caption = "Tutorial Game"
     @font = Gosu::Font.new(20)
     @network = Network.new
     @derp = "a string"
+    @cell_width = @coop_width/@num_x_cells
+    @cell_height = @coop_height/@num_y_cells
+
+    @chickens = Array.new
   end
 
   def update
@@ -19,12 +28,38 @@ class Tutorial < Gosu::Window
   end
 
   def draw
-    @font.draw("hi",10, 10, 3, 1.0, 1.0, Gosu::Color::YELLOW)
-    @font.draw(@derp,10, 40, 3, 1.0, 1.0, Gosu::Color::YELLOW)
+    @font.draw(@derp,5, 5, 1, 1.0, 1.0, Gosu::Color::YELLOW)
+    @chickens.each do |chicken|
+      chicken.draw(@cell_width,@cell_height)
+    end
   end
 
   def on_derp(herp)
     @derp = herp
+    message = JSON.parse(herp)
+    @chickens = []
+    message["chickens"].each do |chicken|
+      @chickens.push( Chicken.new(chicken) )
+    end
+  end
+
+  class Chicken
+    def initialize(chicken)
+      @image = Gosu::Image.new( "public/chicken.png" )
+      @x = chicken[1]["x"]
+      @y = chicken[1]["y"]
+      @name = chicken[0]
+      @font = Gosu::Font.new(19)
+    end
+
+    def warp(x,y)
+      @x, @y = x, y
+    end
+
+    def draw(cell_width,cell_height)
+      @image.draw(@x*cell_width,@y*cell_height,2)
+      @font.draw(@name,@x*cell_width,(@y+0.8)*cell_height,3,1.0,1.0,Gosu::Color::GREEN)
+    end
   end
 
 

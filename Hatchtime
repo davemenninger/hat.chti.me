@@ -223,10 +223,11 @@ sub lay_egg {
       && (scalar keys %$chickens)<15
       && (int rand(3)) == 2
     ) {
-        my $name = $args{chicken} . '_' . $meta->name();
+        my $name = $meta->name();
         $eggs->{$name}->{x}   = $chickens->{ $args{chicken} }->{x};
         $eggs->{$name}->{y}   = $chickens->{ $args{chicken} }->{y};
         $eggs->{$name}->{age} = 0;
+        $eggs->{$name}->{mother} = $args{chicken};
     }
     return;
 }

@@ -7,7 +7,24 @@ use Mojo::JSON qw(decode_json encode_json);
 use Mojolicious::Plugin::Authentication;
 use Acme::MetaSyntactic qw( norse_mythology );
 
+app->plugin(
+    authentication => {
+        autoload_user => 1,
+        load_user     => sub {
+            my ( $app, $uid ) = @_;
+            return $uid;
+        },
+        validate_user => sub {
+            my ( $app, $username, $password, $extradata ) = @_;
+            return 1 if ( $username eq 'bender' && $password eq 'bending' );
+            return;
+        },
+    }
+);
+
+
 my $clients = {};
+my $players = {};
 
 my $meta = Acme::MetaSyntactic->new( category => ':all' );
 my $chickens = {
@@ -93,15 +110,28 @@ sub do_msg {
     given ( $json_msg->{cmd}) {
       when ('AUTHENTICATE') {
         $c->authenticate( $json_msg->{name}, $json_msg->{code} );
+        $players->{$id} //= { eggs => 0 };
       }
       when ('DE_AUTHENTICATE'){
         $c->logout();
         $c->session( expires => 1 );
       }
-      when ('MOVE'){
+      when ('COLLECT'){
         if ( $c->is_user_authenticated ) {
+          app->log->debug('arf');
+          # if an egg is at this location
+          my ($matching_egg) = grep {
+            $eggs->{$_}->{x} eq $json_msg->{x}
+            && $eggs->{$_}->{y} eq $json_msg->{y}
+          } keys %$eggs;
+          if ( $matching_egg )
+          {
+            $players->{$id}->{eggs} +=1;
+            my $egg = delete($eggs->{ $matching_egg });
+          }
         }
         else {
+          app->log->debug('moo');
         }
       }
       when ('DESTINATION'){
@@ -121,6 +151,7 @@ sub update_clients {
                 json => {
                     chickens => $chickens,
                     eggs => $eggs,
+                    players => $players,
                 }
             }
         );
@@ -226,6 +257,7 @@ sub lay_egg {
         my $name = $meta->name();
         $eggs->{$name}->{x}   = $chickens->{ $args{chicken} }->{x};
         $eggs->{$name}->{y}   = $chickens->{ $args{chicken} }->{y};
+        $eggs->{$name}->{name} = $name;
         $eggs->{$name}->{age} = 0;
         $eggs->{$name}->{mother} = $args{chicken};
     }
@@ -235,7 +267,9 @@ sub lay_egg {
 sub age_egg {
     my (%args) = @_;
     $eggs->{ $args{egg} }->{age} += 1;
-    if ( $eggs->{ $args{egg} }->{age} > 5 )
+    if ( $eggs->{ $args{egg} }->{age} > 7
+      && (int rand(3)) ==2
+    )
     {
         app->log->debug( "\t" . $args{egg} . ' hatched!' );
         my $chicken = delete($eggs->{ $args{egg} });

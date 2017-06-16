@@ -16,6 +16,19 @@ document.onreadystatechange = function() {
                 x: Math.floor(mouse_x / cell_width),
                 y: Math.floor(mouse_y / cell_height)
             };
+            ws.send(JSON.stringify({
+                cmd: 'COLLECT',
+                x: selected_cell.x,
+                y: selected_cell.y
+            }));
+            if( selected_cell.x == 3 )
+            {
+                ws.send(JSON.stringify({
+                    cmd: 'AUTHENTICATE',
+                    name: 'bender',
+                    code: 'bending'
+                }));
+            }
             draw();
         },
         false);
@@ -45,7 +58,9 @@ ws.onmessage = function(event) {
     var res = JSON.parse(event.data);
     chickens = res.chickens;
     eggs = res.eggs;
+    players = res.players;
     console.log(chickens);
+    console.log(players);
     document.getElementById('list').innerHTML = '';
     for (var c in res.chickens) {
         var chicken = document.getElementById(c);
@@ -77,6 +92,15 @@ ws.onmessage = function(event) {
             };
             egg.appendChild(img);
             document.getElementById('list').appendChild(egg);
+        }
+    }
+    for (var p in res.players) {
+        var player = document.getElementById(p);
+        if (!player) {
+            player = document.createElement("div");
+            player.innerHTML = p + ' ' + res.players[p].eggs;
+            player.id = res.players[p];
+            document.getElementById('list').appendChild(player);
         }
     }
     draw();
@@ -111,6 +135,8 @@ function draw() {
         for (var c in chickens) {
             var img = document.getElementById('img-' + c);
             context.drawImage(img, chickens[c].x*cell_width, chickens[c].y*cell_height,cell_width,cell_height);
+            context.font = "50px Verdana";
+            context.fillText("x",5,10);
         }
 
         //current mouse cell
